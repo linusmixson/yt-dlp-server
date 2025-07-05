@@ -151,4 +151,4 @@ def test_multithreaded_consumers(task: Task):
         t.join()  # Ensure all threads have finished
 
     assert len(items_processed) == num_tasks
-    assert q.qsize() == 0 
+    assert q.qsize() == 0

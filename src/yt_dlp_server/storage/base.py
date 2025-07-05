@@ -2,7 +2,6 @@ import abc
 import pathlib
 from typing import Generic, TypeVar
 
-
 PathType = TypeVar("PathType")
 
 

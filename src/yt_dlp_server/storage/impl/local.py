@@ -1,7 +1,7 @@
 import pathlib
 import tempfile
 
-from pydantic import BaseModel, ConfigDict, Field, PrivateAttr
+from pydantic import BaseModel, ConfigDict, PrivateAttr
 
 from yt_dlp_server.storage.base import BaseStorageEngine
 
@@ -24,7 +24,7 @@ class LocalStorageEngine(BaseModel, BaseStorageEngine[pathlib.Path]):
 
     def canonicalize_path(self, path: pathlib.Path) -> pathlib.Path:
         return self.repository / path
-    
+
     def write_bytes_to_path(self, path: pathlib.Path, data: bytes) -> int:
         canonical_path = self.canonicalize_path(path)
         canonical_path.parent.mkdir(parents=True, exist_ok=True)

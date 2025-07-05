@@ -1,1 +1,1 @@
-"""Tests package for yt-dlp-server.""" 
+"""Tests package for yt-dlp-server."""

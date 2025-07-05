@@ -38,7 +38,7 @@ class TestLocalStorageEngine:
     def test_canonicalize_path(self, temp_repo_path: pathlib.Path):
         """Test that canonicalize_path correctly resolves paths."""
         engine = LocalStorageEngine(repository=temp_repo_path)
-        
+
         # Test with a simple path
         simple_path = pathlib.Path("test_file.txt")
         assert engine.canonicalize_path(simple_path) == temp_repo_path / simple_path
@@ -81,7 +81,7 @@ class TestLocalStorageEngine:
         canonical_path = engine.canonicalize_path(path)
         assert canonical_path.exists()
         assert canonical_path.parent.is_dir()
-        
+
         read_data = engine.read_bytes_from_path(path)
         assert read_data == data
 
@@ -133,4 +133,4 @@ class TestLocalStorageEngine:
         try:
             engine.delete_path(path)
         except Exception as e:
-            pytest.fail(f"Deleting a non-existent path raised an exception: {e}") 
+            pytest.fail(f"Deleting a non-existent path raised an exception: {e}")

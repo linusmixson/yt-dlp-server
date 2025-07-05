@@ -1,4 +1,3 @@
-import pytest
 
 from yt_dlp_server.workers.task import Task
 
@@ -33,4 +32,4 @@ def test_task_serialization_roundtrip():
     original_task = Task(url=url)
     json_data = original_task.model_dump_json()
     new_task = Task.model_validate_json(json_data)
-    assert original_task == new_task 
+    assert original_task == new_task

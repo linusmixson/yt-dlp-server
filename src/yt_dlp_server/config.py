@@ -1,5 +1,5 @@
 """Configuration for yt-dlp-server."""
-from typing import Any, ClassVar, Literal, Optional
+from typing import Literal
 
 from pydantic import Field, conint
 from pydantic_settings import BaseSettings
@@ -41,7 +41,7 @@ class YtDlpSettings(BaseSettings):
     live_from_start: bool = Field(
         default=False, description="Download livestreams from the start."
     )
-    wait_for_video: tuple[Optional[float], Optional[float]] = Field(
+    wait_for_video: tuple[float | None, float | None] = Field(
         default=(None, None),
         description=(
             "Wait for scheduled streams to become available. "
@@ -57,7 +57,7 @@ class YtDlpSettings(BaseSettings):
     )
 
     # Network Options
-    proxy: Optional[str] = Field(
+    proxy: str | None = Field(
         default=None,
         description="Use the specified HTTP/HTTPS/SOCKS proxy.",
     )
@@ -65,11 +65,11 @@ class YtDlpSettings(BaseSettings):
         default=20,
         description="Time to wait before giving up, in seconds.",
     )
-    source_address: Optional[str] = Field(
+    source_address: str | None = Field(
         default=None,
         description="Client-side IP address to bind to.",
     )
-    force_ip: Optional[Literal["4", "6"]] = Field(
+    force_ip: Literal["4", "6"] | None = Field(
         default=None,
         description="Make all connections via IPv4 or IPv6.",
     )
@@ -79,7 +79,7 @@ class YtDlpSettings(BaseSettings):
     )
 
     # Geo-restriction
-    geo_verification_proxy: Optional[str] = Field(
+    geo_verification_proxy: str | None = Field(
         default=None,
         description="Use this proxy to verify the IP address for some geo-restricted sites.",
     )
@@ -87,11 +87,11 @@ class YtDlpSettings(BaseSettings):
         default=True,
         description="Bypass geographic restriction via faking X-Forwarded-For HTTP header.",
     )
-    geo_bypass_country: Optional[str] = Field(
+    geo_bypass_country: str | None = Field(
         default=None,
         description="Force bypass geographic restriction with explicitly provided two-letter ISO 3166-2 country code.",
     )
-    geo_bypass_ip_block: Optional[str] = Field(
+    geo_bypass_ip_block: str | None = Field(
         default=None,
         description="Force bypass geographic restriction with explicitly provided IP block in CIDR notation.",
     )
@@ -101,23 +101,23 @@ class YtDlpSettings(BaseSettings):
         default="0",
         description="Comma separated list of playlist items to download.",
     )
-    min_filesize: Optional[int] = Field(
+    min_filesize: int | None = Field(
         default=None,
         description="Do not download any videos smaller than SIZE (e.g. 50k or 44.6m).",
     )
-    max_filesize: Optional[int] = Field(
+    max_filesize: int | None = Field(
         default=None,
         description="Do not download any videos larger than SIZE (e.g. 50k or 44.6m).",
     )
-    date: Optional[str] = Field(
+    date: str | None = Field(
         default=None,
         description="Download only videos uploaded in this date (YYYYMMDD).",
     )
-    datebefore: Optional[str] = Field(
+    datebefore: str | None = Field(
         default=None,
         description="Download only videos uploaded on or before this date (YYYYMMDD).",
     )
-    dateafter: Optional[str] = Field(
+    dateafter: str | None = Field(
         default=None,
         description="Download only videos uploaded on or after this date (YYYYMMDD).",
     )
@@ -141,13 +141,13 @@ class YtDlpSettings(BaseSettings):
         default=False,
         description="Download playlist videos in random order.",
     )
-    subpart: tuple[Optional[float], Optional[float]] = Field(
+    subpart: tuple[float | None, float | None] = Field(
         default=(None, None),
         description="Download only a video subpart, e.g., '10:15-15:30'",
     )
 
     # Download Options
-    ratelimit: Optional[int] = Field(
+    ratelimit: int | None = Field(
         default=None,
         description="Maximum download rate in bytes per second (e.g. 50K or 4.2M).",
     )
@@ -167,7 +167,7 @@ class YtDlpSettings(BaseSettings):
         default=False,
         description="Keep downloaded fragments on disk.",
     )
-    buffersize: Optional[int] = Field(
+    buffersize: int | None = Field(
         default=1024,
         description="Size of download buffer (e.g. 1024 or 16K).",
     )
@@ -175,7 +175,7 @@ class YtDlpSettings(BaseSettings):
         default=False,
         description="Do not automatically adjust the buffer size.",
     )
-    http_chunk_size: Optional[int] = Field(
+    http_chunk_size: int | None = Field(
         default=None,
         description="Size of a chunk for chunk-based HTTP downloading (e.g. 10485760 or 10M).",
     )
@@ -183,17 +183,17 @@ class YtDlpSettings(BaseSettings):
         default=1,
         description="Number of fragments of a dash/hlsnative video to download concurrently.",
     )
-    external_downloader: Optional[str] = Field(
+    external_downloader: str | None = Field(
         default=None,
         description="Name of the external downloader to use.",
     )
-    external_downloader_args: Optional[str] = Field(
+    external_downloader_args: str | None = Field(
         default=None,
         description="Arguments to pass to the external downloader.",
     )
 
     # Filesystem Options
-    batchfile: Optional[str] = Field(
+    batchfile: str | None = Field(
         default=None,
         description='File containing URLs to download ("-" for stdin).',
     )
@@ -249,19 +249,19 @@ class YtDlpSettings(BaseSettings):
         default=False,
         description="Write video annotations to a .annotations.xml file.",
     )
-    load_info_json: Optional[str] = Field(
+    load_info_json: str | None = Field(
         default=None,
         description="JSON file containing the video information.",
     )
-    cookiefile: Optional[str] = Field(
+    cookiefile: str | None = Field(
         default=None,
         description="File to read cookies from and dump cookie jar in.",
     )
-    cookiesfrombrowser: Optional[str] = Field(
+    cookiesfrombrowser: str | None = Field(
         default=None,
         description="The name of the browser to load cookies from.",
     )
-    cachedir: Optional[str] = Field(
+    cachedir: str | None = Field(
         default=None,
         description="Location in the filesystem where yt-dlp can store some downloaded information.",
     )
@@ -343,11 +343,11 @@ class YtDlpSettings(BaseSettings):
         default=False,
         description="Use an unencrypted connection to retrieve information about the video.",
     )
-    user_agent: Optional[str] = Field(
+    user_agent: str | None = Field(
         default=None,
         description="Specify a custom user agent.",
     )
-    referer: Optional[str] = Field(
+    referer: str | None = Field(
         default=None,
         description="Specify a custom referer, use if the video access is restricted to one domain.",
     )
@@ -397,7 +397,7 @@ class YtDlpSettings(BaseSettings):
         default=False,
         description="Prefer free video formats unless specifically requested.",
     )
-    merge_output_format: Optional[str] = Field(
+    merge_output_format: str | None = Field(
         default=None,
         description="If a merge is required, output to a container of this format.",
     )
@@ -425,15 +425,15 @@ class YtDlpSettings(BaseSettings):
     )
 
     # Authentication Options
-    username: Optional[str] = Field(
+    username: str | None = Field(
         default=None,
         description="Login with this account ID.",
     )
-    password: Optional[str] = Field(
+    password: str | None = Field(
         default=None,
         description="Account password.",
     )
-    twofactor: Optional[str] = Field(
+    twofactor: str | None = Field(
         default=None,
         description="Two-factor authentication code.",
     )
@@ -441,35 +441,35 @@ class YtDlpSettings(BaseSettings):
         default=False,
         description="Use .netrc authentication data.",
     )
-    netrc_location: Optional[str] = Field(
+    netrc_location: str | None = Field(
         default=None,
         description="Location of the .netrc file.",
     )
-    videopassword: Optional[str] = Field(
+    videopassword: str | None = Field(
         default=None,
         description="Video password.",
     )
-    ap_mso: Optional[str] = Field(
+    ap_mso: str | None = Field(
         default=None,
         description="Adobe Pass multiple-system operator identifier.",
     )
-    ap_username: Optional[str] = Field(
+    ap_username: str | None = Field(
         default=None,
         description="Multiple-system operator account login.",
     )
-    ap_password: Optional[str] = Field(
+    ap_password: str | None = Field(
         default=None,
         description="Multiple-system operator account password.",
     )
-    client_certificate: Optional[str] = Field(
+    client_certificate: str | None = Field(
         default=None,
         description="Path to client certificate file.",
     )
-    client_certificate_key: Optional[str] = Field(
+    client_certificate_key: str | None = Field(
         default=None,
         description="Path to client certificate key file.",
     )
-    client_certificate_password: Optional[str] = Field(
+    client_certificate_password: str | None = Field(
         default=None,
         description="Password for client certificate key.",
     )
@@ -479,7 +479,7 @@ class YtDlpSettings(BaseSettings):
         default=False,
         description="Convert video files to audio-only files.",
     )
-    audioformat: Optional[str] = Field(
+    audioformat: str | None = Field(
         default=None,
         description="Specify audio format.",
     )
@@ -487,11 +487,11 @@ class YtDlpSettings(BaseSettings):
         default=5,
         description="Specify audio quality, from 0 (best) to 10 (worst).",
     )
-    remuxvideo: Optional[str] = Field(
+    remuxvideo: str | None = Field(
         default=None,
         description="Remux video to another container if necessary.",
     )
-    recodevideo: Optional[str] = Field(
+    recodevideo: str | None = Field(
         default=None,
         description="Recode video to another format if necessary.",
     )
@@ -547,7 +547,7 @@ class YtDlpSettings(BaseSettings):
         default="detect_or_warn",
         description="Automatically correct known video container issues.",
     )
-    ffmpeg_location: Optional[str] = Field(
+    ffmpeg_location: str | None = Field(
         default=None,
         description="Location of the ffmpeg/avconv binary.",
     )
@@ -555,7 +555,7 @@ class YtDlpSettings(BaseSettings):
         default_factory=list,
         description="Execute a command on the file after downloading and post-processing.",
     )
-    convertsubtitles: Optional[str] = Field(
+    convertsubtitles: str | None = Field(
         default=None,
         description="Convert subtitles to another format.",
     )
@@ -609,4 +609,4 @@ class YtDlpSettings(BaseSettings):
         use_enum_values = True
 
 
-SETTINGS = YtDlpSettings() 
+SETTINGS = YtDlpSettings()
