@@ -10,15 +10,15 @@ class BaseStorageEngine(abc.ABC, Generic[PathType]):
     @property
     @abc.abstractmethod
     def repository(self) -> PathType:
-        ...
+        raise NotImplementedError
 
     @abc.abstractmethod
     def canonicalize_path(self, path: pathlib.Path) -> PathType:
-        ...
+        raise NotImplementedError
 
     @abc.abstractmethod
     def write_bytes_to_path(self, path: pathlib.Path, data: bytes) -> int:
-        ...
+        raise NotImplementedError
 
     def write_text_to_path(
         self,
@@ -31,7 +31,7 @@ class BaseStorageEngine(abc.ABC, Generic[PathType]):
 
     @abc.abstractmethod
     def read_bytes_from_path(self, path: pathlib.Path) -> bytes:
-        ...
+        raise NotImplementedError
 
     def read_text_from_path(
         self,
@@ -43,4 +43,4 @@ class BaseStorageEngine(abc.ABC, Generic[PathType]):
 
     @abc.abstractmethod
     def delete_path(self, path: pathlib.Path) -> None:
-        ...
+        raise NotImplementedError
