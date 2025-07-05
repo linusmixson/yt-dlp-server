@@ -11,7 +11,7 @@ from yt_dlp_server.workers.task import Task
 @pytest.fixture
 def task() -> Task:
     """Provides a simple Task instance for tests."""
-    return Task()
+    return Task(url="https://example.com/video.mp4")
 
 
 @pytest.fixture
