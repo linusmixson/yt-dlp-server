@@ -139,9 +139,7 @@ def test_multithreaded_consumers(task: Task):
     for _ in range(num_tasks):
         q.put(task)
 
-    threads = [
-        threading.Thread(target=consumer_worker) for _ in range(num_consumers)
-    ]
+    threads = [threading.Thread(target=consumer_worker) for _ in range(num_consumers)]
     for t in threads:
         t.start()
 

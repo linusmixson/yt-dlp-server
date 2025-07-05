@@ -1,4 +1,5 @@
 """Configuration for yt-dlp-server."""
+
 from typing import Literal
 
 from pydantic import Field, conint
