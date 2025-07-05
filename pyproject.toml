@@ -1,0 +1,75 @@
+[project]
+name = "yt-dlp-server"
+version = "0.1.0"
+description = "A configurable, deployable interface to yt-dlp"
+readme = "README.md"
+requires-python = ">=3.13.5"
+authors = [
+    {name = "Linus Mixson", email = "lmixson@gmail.com"}
+]
+license = {text = "MPL-2.0"}
+classifiers = [
+    "Development Status :: 1 - Planning",
+    "License :: OSI Approved :: Mozilla Public License 2.0 (MPL 2.0)",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.13",
+]
+dependencies = [
+    "pydantic-settings",
+    "yt-dlp",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "ruff",
+    "mypy",
+    "httpx",
+]
+
+[project.urls]
+Homepage = "https://github.com/linusmixson/yt-dlp-server"
+Repository = "https://github.com/linusmixson/yt-dlp-server"
+Issues = "https://github.com/linusmixson/yt-dlp-server/issues"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+# Configure hatchling to find packages in src/
+[tool.hatch.build.targets.wheel]
+packages = ["src/yt_dlp_server"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py313"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "C4", "UP", "SIM"]
+ignore = []
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+
+[tool.mypy]
+python_version = "3.13"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+packages = ["yt_dlp_server"]
+mypy_path = "src"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "-v",
+    "--strict-markers",
+    "--strict-config",
+]
