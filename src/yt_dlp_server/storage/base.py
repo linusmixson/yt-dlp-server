@@ -1,11 +1,11 @@
 import abc
 import pathlib
-from typing import Generic, TypeVar
+from typing import TypeVar
 
 PathType = TypeVar("PathType")
 
 
-class BaseStorageEngine(abc.ABC, Generic[PathType]):
+class BaseStorageEngine[PathType](abc.ABC):
     @property
     @abc.abstractmethod
     def repository(self) -> PathType:
