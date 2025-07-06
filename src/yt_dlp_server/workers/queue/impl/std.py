@@ -2,8 +2,8 @@ import queue
 
 from yt_dlp_server.workers.queue.base import (
     BaseQueue,
-    Empty,
-    Full,
+    EmptyError,
+    FullError,
 )
 from yt_dlp_server.workers.task import Task
 
@@ -23,7 +23,7 @@ class STDQueue(BaseQueue):
         try:
             return self._queue.get(block=block, timeout=timeout)
         except queue.Empty as e:
-            raise Empty from e
+            raise EmptyError from e
 
     def put(self, item: Task, block: bool = True, timeout: float | None = None) -> None:
         """
@@ -32,7 +32,7 @@ class STDQueue(BaseQueue):
         try:
             self._queue.put(item, block=block, timeout=timeout)
         except queue.Full as e:
-            raise Full from e
+            raise FullError from e
 
     def qsize(self) -> int:
         """

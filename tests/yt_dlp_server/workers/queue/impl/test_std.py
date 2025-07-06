@@ -3,7 +3,7 @@ import time
 
 import pytest
 
-from yt_dlp_server.workers.queue.base import Empty, Full
+from yt_dlp_server.workers.queue.base import EmptyError, FullError
 from yt_dlp_server.workers.queue.impl.std import STDQueue
 from yt_dlp_server.workers.task import Task
 
@@ -37,36 +37,36 @@ def test_put_and_get(queue: STDQueue, task: Task):
 
 
 def test_get_nowait_on_empty_raises_empty(queue: STDQueue):
-    """Test that get_nowait raises Empty on an empty queue."""
-    with pytest.raises(Empty):
+    """Test that get_nowait raises EmptyError on an empty queue."""
+    with pytest.raises(EmptyError):
         queue.get_nowait()
 
 
 def test_put_nowait_on_full_raises_full(task: Task):
-    """Test that put_nowait raises Full on a full queue."""
+    """Test that put_nowait raises FullError on a full queue."""
     q = STDQueue(maxsize=1)
     q.put_nowait(task)
-    with pytest.raises(Full):
+    with pytest.raises(FullError):
         q.put_nowait(task)
 
 
 def test_get_with_timeout_on_empty_queue(queue: STDQueue):
-    """Test that a blocking get with a timeout raises Empty after the timeout."""
+    """Test that a blocking get with a timeout raises EmptyError after the timeout."""
     timeout = 0.01
     start_time = time.monotonic()
-    with pytest.raises(Empty):
+    with pytest.raises(EmptyError):
         queue.get(timeout=timeout)
     duration = time.monotonic() - start_time
     assert duration == pytest.approx(timeout, abs=0.01)
 
 
 def test_put_with_timeout_on_full_queue(task: Task):
-    """Test that a blocking put with a timeout raises Full after the timeout."""
+    """Test that a blocking put with a timeout raises FullError after the timeout."""
     q = STDQueue(maxsize=1)
     q.put(task)
     timeout = 0.01
     start_time = time.monotonic()
-    with pytest.raises(Full):
+    with pytest.raises(FullError):
         q.put(task, timeout=timeout)
     duration = time.monotonic() - start_time
     assert duration == pytest.approx(timeout, abs=0.01)
@@ -133,7 +133,7 @@ def test_multithreaded_consumers(task: Task):
                 with lock:
                     items_processed.append(item)
                 q.task_done()
-            except Empty:
+            except EmptyError:
                 break  # No more items
 
     for _ in range(num_tasks):

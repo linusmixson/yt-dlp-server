@@ -3,11 +3,11 @@ import abc
 from yt_dlp_server.workers.task import Task
 
 
-class Empty(Exception):
+class EmptyError(Exception):
     """Exception raised by non-blocking get() on an empty queue."""
 
 
-class Full(Exception):
+class FullError(Exception):
     """Exception raised by non-blocking put() on a full queue."""
 
 
@@ -29,9 +29,9 @@ class BaseQueue(abc.ABC):
         If optional args `block` is true and `timeout` is None (the default),
         block if necessary until an item is available. If `timeout` is a
         positive number, it blocks at most `timeout` seconds and raises
-        the :class:`Empty` exception if no item was available within that
+        the :class:`EmptyError` exception if no item was available within that
         time. Otherwise (`block` is false), return an item if one is
-        immediately available, else raise the :class:`Empty` exception
+        immediately available, else raise the :class:`EmptyError` exception
         (`timeout` is ignored in that case).
         """
         raise NotImplementedError
@@ -44,9 +44,9 @@ class BaseQueue(abc.ABC):
         If optional args `block` is true and `timeout` is None (the default),
         block if necessary until a free slot is available. If `timeout` is a
         positive number, it blocks at most `timeout` seconds and raises the
-        :class:`Full` exception if no free slot was available within that
+        :class:`FullError` exception if no free slot was available within that
         time. Otherwise (`block` is false), put an item if a free slot is
-        immediately available, else raise the :class:`Full` exception
+        immediately available, else raise the :class:`FullError` exception
         (`timeout` is ignored in that case).
         """
         raise NotImplementedError
@@ -56,7 +56,7 @@ class BaseQueue(abc.ABC):
         Remove and return an item from the queue without blocking.
 
         :return: An item from the queue.
-        :raises Empty: If the queue is empty.
+        :raises EmptyError: If the queue is empty.
         """
         return self.get(block=False)
 
@@ -65,7 +65,7 @@ class BaseQueue(abc.ABC):
         Put an item into the queue without blocking.
 
         :param item: The item to put into the queue.
-        :raises Full: If the queue is full.
+        :raises FullError: If the queue is full.
         """
         self.put(item, block=False)
 
