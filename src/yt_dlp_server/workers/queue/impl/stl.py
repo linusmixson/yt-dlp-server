@@ -8,7 +8,7 @@ from yt_dlp_server.workers.queue.base import (
 from yt_dlp_server.workers.task import Task
 
 
-class STDQueue(BaseQueue):
+class STLQueue(BaseQueue):
     """
     A queue that uses the standard library's :class:`queue.Queue` under the hood.
     """

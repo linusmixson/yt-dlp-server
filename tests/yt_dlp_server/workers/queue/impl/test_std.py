@@ -4,7 +4,7 @@ import time
 import pytest
 
 from yt_dlp_server.workers.queue.base import EmptyError, FullError
-from yt_dlp_server.workers.queue.impl.std import STDQueue
+from yt_dlp_server.workers.queue.impl.stl import STLQueue
 from yt_dlp_server.workers.task import Task
 
 
@@ -15,12 +15,12 @@ def task() -> Task:
 
 
 @pytest.fixture
-def queue() -> STDQueue:
-    """Provides an empty STDQueue instance for each test."""
-    return STDQueue()
+def queue() -> STLQueue:
+    """Provides an empty STLQueue instance for each test."""
+    return STLQueue()
 
 
-def test_qsize(queue: STDQueue, task: Task):
+def test_qsize(queue: STLQueue, task: Task):
     """Test that qsize correctly reflects the number of items in the queue."""
     assert queue.qsize() == 0
     queue.put(task)
@@ -29,14 +29,14 @@ def test_qsize(queue: STDQueue, task: Task):
     assert queue.qsize() == 0
 
 
-def test_put_and_get(queue: STDQueue, task: Task):
+def test_put_and_get(queue: STLQueue, task: Task):
     """Test basic put and get functionality."""
     queue.put(task)
     retrieved_task = queue.get()
     assert retrieved_task is task
 
 
-def test_get_nowait_on_empty_raises_empty(queue: STDQueue):
+def test_get_nowait_on_empty_raises_empty(queue: STLQueue):
     """Test that get_nowait raises EmptyError on an empty queue."""
     with pytest.raises(EmptyError):
         queue.get_nowait()
@@ -44,13 +44,13 @@ def test_get_nowait_on_empty_raises_empty(queue: STDQueue):
 
 def test_put_nowait_on_full_raises_full(task: Task):
     """Test that put_nowait raises FullError on a full queue."""
-    q = STDQueue(maxsize=1)
+    q = STLQueue(maxsize=1)
     q.put_nowait(task)
     with pytest.raises(FullError):
         q.put_nowait(task)
 
 
-def test_get_with_timeout_on_empty_queue(queue: STDQueue):
+def test_get_with_timeout_on_empty_queue(queue: STLQueue):
     """Test that a blocking get with a timeout raises EmptyError after the timeout."""
     timeout = 0.01
     start_time = time.monotonic()
@@ -62,7 +62,7 @@ def test_get_with_timeout_on_empty_queue(queue: STDQueue):
 
 def test_put_with_timeout_on_full_queue(task: Task):
     """Test that a blocking put with a timeout raises FullError after the timeout."""
-    q = STDQueue(maxsize=1)
+    q = STLQueue(maxsize=1)
     q.put(task)
     timeout = 0.01
     start_time = time.monotonic()
@@ -77,7 +77,7 @@ def test_task_done_and_join(task: Task):
     Tests that join() blocks until task_done() is called for all items,
     using a worker thread to process items.
     """
-    q = STDQueue()
+    q = STLQueue()
     num_tasks = 5
 
     def worker():
@@ -103,12 +103,12 @@ def test_task_done_and_join(task: Task):
     worker_thread.join()  # Clean up the thread
 
 
-def test_join_on_empty_queue_returns_immediately(queue: STDQueue):
+def test_join_on_empty_queue_returns_immediately(queue: STLQueue):
     """Test that join() on an empty queue returns immediately."""
     queue.join()  # Should not block
 
 
-def test_task_done_without_get_raises_value_error(queue: STDQueue):
+def test_task_done_without_get_raises_value_error(queue: STLQueue):
     """Test that calling task_done() without a corresponding get() raises ValueError."""
     with pytest.raises(ValueError):
         queue.task_done()
@@ -119,7 +119,7 @@ def test_multithreaded_consumers(task: Task):
     Tests thread safety with multiple consumer threads processing items
     from the queue concurrently.
     """
-    q = STDQueue()
+    q = STLQueue()
     num_tasks = 50
     num_consumers = 5
     items_processed = []
