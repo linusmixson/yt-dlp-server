@@ -13,7 +13,7 @@ def db():
     database.connect(":memory:")
     database.create_tables()
     yield database
-    # Teardown: close the connection if it exists
+    # Teardown: close the connection (this destroys the :memory: database)
     if database.connection:
         database.connection.close()
 
@@ -68,13 +68,18 @@ class TestSQLiteDBConnection:
         cursor = db.connection.execute("PRAGMA table_info(task)")
         columns = cursor.fetchall()
         
-        # Expected columns: job_id (TEXT, PRIMARY KEY), url (TEXT), status (TEXT)
-        assert len(columns) == 3
+        # Expected columns: id (INTEGER, PRIMARY KEY), job_id (TEXT), url (TEXT), status (TEXT)
+        assert len(columns) == 4
+        
+        # Check id column
+        id_col = next(col for col in columns if col[1] == "id")
+        assert id_col[2] == "INTEGER"   # type
+        assert id_col[5] == 1           # primary key flag
         
         # Check job_id column
         job_id_col = next(col for col in columns if col[1] == "job_id")
         assert job_id_col[2] == "TEXT"  # type
-        assert job_id_col[5] == 1       # primary key flag
+        assert job_id_col[5] == 0       # not a primary key
         
         # Check url column
         url_col = next(col for col in columns if col[1] == "url")
@@ -83,6 +88,17 @@ class TestSQLiteDBConnection:
         # Check status column
         status_col = next(col for col in columns if col[1] == "status")
         assert status_col[2] == "TEXT"
+        
+        # Check for unique constraint on (job_id, url)
+        cursor = db.connection.execute("PRAGMA index_list(task)")
+        indexes = cursor.fetchall()
+        
+        # There should be at least one index (for the unique constraint)
+        assert len(indexes) >= 1
+        
+        # Check that there's a unique index
+        unique_indexes = [idx for idx in indexes if idx[2] == 1]  # unique flag
+        assert len(unique_indexes) >= 1
 
 
 class TestSQLiteDBTaskOperations:
@@ -101,13 +117,15 @@ class TestSQLiteDBTaskOperations:
         db.add_task(sample_task)
         
         # Directly query the database to verify persistence
-        cursor = db.connection.execute("SELECT job_id, url, status FROM task WHERE job_id = ?", (sample_task.job_id,))
+        cursor = db.connection.execute("SELECT id, job_id, url, status FROM task WHERE job_id = ? AND url = ?", (sample_task.job_id, sample_task.url))
         row = cursor.fetchone()
         
         assert row is not None
-        assert row[0] == sample_task.job_id
-        assert row[1] == sample_task.url
-        assert row[2] in [status.value for status in TaskStatus]
+        assert isinstance(row[0], int)  # id should be an integer
+        assert row[0] > 0               # id should be positive (autoincrement starts at 1)
+        assert row[1] == sample_task.job_id
+        assert row[2] == sample_task.url
+        assert row[3] in [status.value for status in TaskStatus]
 
     def test_add_multiple_tasks(self, db, sample_task, another_task):
         """Test adding multiple different tasks."""
@@ -209,15 +227,29 @@ class TestSQLiteDBTaskStatus:
 class TestSQLiteDBEdgeCases:
     """Test edge cases and error conditions."""
 
-    def test_add_duplicate_job_id(self, db, sample_task):
-        """Test adding a task with a duplicate job_id."""
+    def test_add_duplicate_job_id_different_url(self, db, sample_task):
+        """Test adding a task with the same job_id but different URL (should succeed)."""
         # Add the first task
         db.add_task(sample_task)
         
-        # Try to add a task with the same job_id but different URL
-        duplicate_task = Task(job_id=sample_task.job_id, url="https://different.com/video.mp4")
+        # Add a task with the same job_id but different URL - this should succeed
+        different_url_task = Task(job_id=sample_task.job_id, url="https://different.com/video.mp4")
+        result = db.add_task(different_url_task)
         
-        # This should raise an integrity error due to PRIMARY KEY constraint
+        # Should succeed and return a TaskRecord
+        assert isinstance(result, TaskRecord)
+        assert result.task.job_id == sample_task.job_id
+        assert result.task.url == different_url_task.url
+    
+    def test_add_duplicate_job_id_and_url(self, db, sample_task):
+        """Test adding a task with duplicate (job_id, url) combination."""
+        # Add the first task
+        db.add_task(sample_task)
+        
+        # Try to add a task with the same job_id AND same URL
+        duplicate_task = Task(job_id=sample_task.job_id, url=sample_task.url)
+        
+        # This should raise an integrity error due to UNIQUE(job_id, url) constraint
         with pytest.raises(sqlite3.IntegrityError):
             db.add_task(duplicate_task)
 

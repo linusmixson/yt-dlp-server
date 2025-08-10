@@ -14,9 +14,11 @@ class SQLiteDB(BaseDB[sqlite3.Connection]):
     def create_tables(self) -> None:
         self.connection.execute("""
             CREATE TABLE IF NOT EXISTS task (
-                job_id TEXT PRIMARY KEY,
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                job_id TEXT,
                 url TEXT,
-                status TEXT
+                status TEXT,
+                UNIQUE(job_id, url)
             )
         """)
 
@@ -33,8 +35,8 @@ class SQLiteDB(BaseDB[sqlite3.Connection]):
 
     def get_task(self, task: Task) -> TaskRecord | None:
         cursor = self.connection.execute("""
-            SELECT job_id, url, status FROM task WHERE job_id = ?
-        """, (task.job_id,))
+            SELECT job_id, url, status FROM task WHERE job_id = ? AND url = ?
+        """, (task.job_id, task.url))
         row = cursor.fetchone()
         if row is None:
             return None
@@ -44,6 +46,6 @@ class SQLiteDB(BaseDB[sqlite3.Connection]):
     
     def update_task(self, task: Task, status: TaskStatus) -> None:
         self.connection.execute("""
-            UPDATE task SET status = ? WHERE job_id = ?
-        """, (status.value, task.job_id))
+            UPDATE task SET status = ? WHERE job_id = ? AND url = ?
+        """, (status.value, task.job_id, task.url))
         self.connection.commit()
