@@ -1,5 +1,5 @@
 import enum
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from pydantic import BaseModel, field_validator, model_validator
@@ -31,7 +31,7 @@ class TaskRecord(BaseModel):
         if isinstance(v, str):
             dt = datetime.fromisoformat(v)
             if dt.tzinfo is None:
-                return dt.replace(tzinfo=timezone.utc)
+                return dt.replace(tzinfo=UTC)
             return dt
         return v
 
@@ -45,7 +45,6 @@ class TaskRecord(BaseModel):
     @model_validator(mode="before")
     @classmethod
     def build_task(cls, data: Any) -> Any:
-        if isinstance(data, dict):
-            if "job_id" in data and "url" in data:
-                data["task"] = Task(job_id=data.pop("job_id"), url=data.pop("url"))
+        if isinstance(data, dict) and "job_id" in data and "url" in data:
+            data["task"] = Task(job_id=data.pop("job_id"), url=data.pop("url"))
         return data

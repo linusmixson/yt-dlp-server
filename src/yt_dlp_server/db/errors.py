@@ -9,7 +9,8 @@ class TaskClaimError(Exception):
         self.task_record = task_record
 
     def __str__(self):
-        return f"Task {self.task.job_id} / {self.task.url} has been claimed by {self.task_record.claimed_by} since {self.task_record.claimed_at}, and timeout has not expired."
+        return (f"Task {self.task.job_id} / {self.task.url} has been claimed by {self.task_record.claimed_by} since "
+                f"{self.task_record.claimed_at}, and timeout has not expired.")
 
 
 class TaskNotFoundError(Exception):

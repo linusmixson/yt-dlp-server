@@ -1,9 +1,9 @@
 import sqlite3
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from yt_dlp_server.db.base import BaseDB
+from yt_dlp_server.db.errors import TaskNotFoundError
 from yt_dlp_server.db.models import Task, TaskRecord, TaskStatus
-from yt_dlp_server.db.errors import TaskClaimError, TaskNotFoundError
 
 
 class SQLiteDB(BaseDB[sqlite3.Connection]):
@@ -46,9 +46,10 @@ class SQLiteDB(BaseDB[sqlite3.Connection]):
         return self.connection is not None
 
     def add_task(self, task: Task, claimed_by: int) -> TaskRecord:
-        now_utc = datetime.now(timezone.utc).isoformat()
-        cursor = self.connection.execute(
-            "INSERT INTO task (job_id, url, status, created_at, claimed_by, claimed_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+        now_utc = datetime.now(UTC).isoformat()
+        self.connection.execute(
+            "INSERT INTO task (job_id, url, status, created_at, claimed_by, claimed_at, updated_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?)",
             (
                 task.job_id,
                 task.url,
@@ -67,7 +68,8 @@ class SQLiteDB(BaseDB[sqlite3.Connection]):
 
     def get_task(self, task: Task) -> TaskRecord | None:
         cursor = self.connection.execute(
-            "SELECT job_id, url, status, created_at, claimed_by, claimed_at, updated_at FROM task WHERE job_id = ? AND url = ?",
+            "SELECT job_id, url, status, created_at, claimed_by, claimed_at, updated_at "
+            "FROM task WHERE job_id = ? AND url = ?",
             (task.job_id, task.url),
         )
         row = cursor.fetchone()
@@ -84,7 +86,7 @@ class SQLiteDB(BaseDB[sqlite3.Connection]):
         return None
 
     def update_task(self, task: Task, status: TaskStatus):
-        now_utc = datetime.now(timezone.utc).isoformat()
+        now_utc = datetime.now(UTC).isoformat()
         self.connection.execute(
             "UPDATE task SET status = ?, updated_at = ? WHERE job_id = ? AND url = ?",
             (status.value, now_utc, task.job_id, task.url),
@@ -94,7 +96,7 @@ class SQLiteDB(BaseDB[sqlite3.Connection]):
     def claim_task(
         self, task: Task, claimed_by: int, timeout_seconds: int = 1800
     ) -> TaskRecord | None:
-        now_utc = datetime.now(timezone.utc).isoformat()
+        now_utc = datetime.now(UTC).isoformat()
 
         # Perform atomic update: only update if claimed_by matches or timeout has expired
         cursor = self.connection.execute(

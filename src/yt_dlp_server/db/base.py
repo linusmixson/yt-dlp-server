@@ -1,14 +1,12 @@
 import abc
-
-from typing import Generic, TypeVar
+from typing import TypeVar
 
 from yt_dlp_server.db.models import Task, TaskRecord, TaskStatus
-
 
 ConnectionParameters = TypeVar("ConnectionParameters")
 
 
-class BaseDB(abc.ABC, Generic[ConnectionParameters]):
+class BaseDB[ConnectionParameters](abc.ABC):
     @abc.abstractmethod
     def connect(self, parameters: ConnectionParameters) -> None:
         raise NotImplementedError

@@ -1,8 +1,10 @@
 """Tests for SQLiteDB implementation."""
 
-import pytest
 import sqlite3
 import time
+
+import pytest
+
 from yt_dlp_server.db.errors import TaskNotFoundError
 from yt_dlp_server.db.impl.sqlite import SQLiteDB
 from yt_dlp_server.db.models import Task, TaskRecord, TaskStatus
@@ -338,7 +340,7 @@ class TestSQLiteDBTransactions:
         db.add_task(sample_task, 123)
 
         # Create a new connection to the same database to verify commit
-        new_connection = sqlite3.connect(":memory:")
+        sqlite3.connect(":memory:")
         # Since we're using :memory:, we can't actually test this with a separate connection
         # But we can verify the task is immediately queryable
         result = db.get_task(sample_task)
