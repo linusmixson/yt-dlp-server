@@ -28,3 +28,7 @@ class BaseDB(abc.ABC, Generic[ConnectionParameters]):
     @abc.abstractmethod
     def update_task(self, task: Task, status: TaskStatus) -> None:
         raise NotImplementedError
+
+    @abc.abstractmethod
+    def claim_task(self, task: Task, claimed_by: int) -> None:
+        raise NotImplementedError

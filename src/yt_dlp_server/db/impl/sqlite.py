@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 
 from yt_dlp_server.db.base import BaseDB
 from yt_dlp_server.db.models import Task, TaskRecord, TaskStatus
+from yt_dlp_server.db.errors import TaskClaimError, TaskNotFoundError
 
 
 class SQLiteDB(BaseDB[sqlite3.Connection]):
@@ -45,34 +46,91 @@ class SQLiteDB(BaseDB[sqlite3.Connection]):
         return self.connection is not None
 
     def add_task(self, task: Task, claimed_by: int) -> TaskRecord:
-        default_status = TaskStatus.PENDING
-        self.connection.execute(
-            """
-            INSERT INTO task (job_id, url, status, claimed_by, claimed_at) VALUES (?, ?, ?, ?, datetime('now', 'utc'))
-        """,
-            (task.job_id, task.url, default_status.value, claimed_by),
+        now_utc = datetime.now(timezone.utc).isoformat()
+        cursor = self.connection.execute(
+            "INSERT INTO task (job_id, url, status, created_at, claimed_by, claimed_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (
+                task.job_id,
+                task.url,
+                TaskStatus.PENDING.value,
+                now_utc,
+                claimed_by,
+                now_utc,
+                now_utc,
+            ),
         )
         self.connection.commit()
-        return self.get_task(task)
+        task_record = self.get_task(task)
+        if task_record is None:
+            raise TaskNotFoundError(task)
+        return task_record
 
     def get_task(self, task: Task) -> TaskRecord | None:
         cursor = self.connection.execute(
-            """
-            SELECT id, job_id, url, status, created_at, claimed_by, claimed_at, updated_at 
-            FROM task WHERE job_id = ? AND url = ?
-        """,
+            "SELECT job_id, url, status, created_at, claimed_by, claimed_at, updated_at FROM task WHERE job_id = ? AND url = ?",
             (task.job_id, task.url),
         )
         row = cursor.fetchone()
-        if row is None:
-            return None
-        return TaskRecord(**dict(row))
+        if row:
+            return TaskRecord(
+                job_id=row[0],
+                url=row[1],
+                status=row[2],
+                created_at=row[3],
+                claimed_by=row[4],
+                claimed_at=row[5],
+                updated_at=row[6],
+            )
+        return None
 
-    def update_task(self, task: Task, status: TaskStatus) -> None:
+    def update_task(self, task: Task, status: TaskStatus):
+        now_utc = datetime.now(timezone.utc).isoformat()
         self.connection.execute(
-            """
-            UPDATE task SET status = ? WHERE job_id = ? AND url = ?
-        """,
-            (status.value, task.job_id, task.url),
+            "UPDATE task SET status = ?, updated_at = ? WHERE job_id = ? AND url = ?",
+            (status.value, now_utc, task.job_id, task.url),
         )
         self.connection.commit()
+
+    def claim_task(
+        self, task: Task, claimed_by: int, timeout_seconds: int = 1800
+    ) -> TaskRecord | None:
+        now_utc = datetime.now(timezone.utc).isoformat()
+
+        # Perform atomic update: only update if claimed_by matches or timeout has expired
+        cursor = self.connection.execute(
+            """
+            UPDATE task
+            SET claimed_by = ?, claimed_at = ?, updated_at = ?
+            WHERE job_id = ? AND url = ?
+              AND (
+                claimed_by = ?
+                OR (
+                    claimed_at IS NOT NULL
+                    AND strftime('%s', ?) - strftime('%s', claimed_at) > ?
+                )
+              )
+            """,
+            (
+                claimed_by,
+                now_utc,
+                now_utc,
+                task.job_id,
+                task.url,
+                claimed_by,
+                now_utc,
+                timeout_seconds,
+            ),
+        )
+        self.connection.commit()
+
+        claimed = cursor.rowcount > 0
+
+        task_record = self.get_task(task)
+
+        if task_record is None:
+            raise TaskNotFoundError(task)
+
+        if claimed:
+            return task_record
+        else:
+            return None

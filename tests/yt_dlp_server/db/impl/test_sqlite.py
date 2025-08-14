@@ -2,6 +2,8 @@
 
 import pytest
 import sqlite3
+import time
+from yt_dlp_server.db.errors import TaskNotFoundError
 from yt_dlp_server.db.impl.sqlite import SQLiteDB
 from yt_dlp_server.db.models import Task, TaskRecord, TaskStatus
 
@@ -369,3 +371,72 @@ class TestSQLiteDBTransactions:
         assert result1.status == TaskStatus.COMPLETED
         assert result2 is not None
         # result2 should have its original status (not affected by update to result1)
+
+
+class TestSQLiteDBTaskClaiming:
+    """Test task claiming logic."""
+
+    def test_claim_task_reclaim_by_same_worker(self, db, sample_task):
+        """Test that a worker can reclaim a task it already owns."""
+        worker_id = 123
+        db.add_task(sample_task, worker_id)
+
+        # Get initial claim time
+        initial_record = db.get_task(sample_task)
+        assert initial_record is not None
+        initial_claimed_at = initial_record.claimed_at
+
+        # Wait a bit to ensure timestamps will be different
+        time.sleep(1)
+
+        # Reclaim the task
+        reclaimed_record = db.claim_task(sample_task, worker_id)
+
+        assert reclaimed_record is not None
+        assert reclaimed_record.claimed_by == worker_id
+        assert reclaimed_record.claimed_at > initial_claimed_at
+        assert reclaimed_record.updated_at > initial_record.updated_at
+
+    def test_claim_task_by_another_worker_fails(self, db, sample_task):
+        """Test that another worker cannot claim a task that is not timed out."""
+        owner_worker_id = 123
+        other_worker_id = 456
+        db.add_task(sample_task, owner_worker_id)
+
+        initial_record = db.get_task(sample_task)
+        assert initial_record is not None
+
+        # Another worker tries to claim it
+        claimed_record = db.claim_task(sample_task, other_worker_id, timeout_seconds=60)
+
+        assert claimed_record is None
+
+    def test_claim_task_by_another_worker_after_timeout_succeeds(self, db, sample_task):
+        """Test that another worker can claim a task after the timeout expires."""
+        owner_worker_id = 123
+        other_worker_id = 456
+        timeout = 1  # 1 second for test
+
+        db.add_task(sample_task, owner_worker_id)
+
+        initial_record = db.get_task(sample_task)
+        assert initial_record is not None
+
+        # Wait for timeout
+        time.sleep(timeout + 1)
+
+        # Another worker claims it
+        claimed_record = db.claim_task(
+            sample_task, other_worker_id, timeout_seconds=timeout
+        )
+
+        assert claimed_record is not None
+        assert claimed_record.claimed_by == other_worker_id
+        assert claimed_record.claimed_at > initial_record.claimed_at
+        assert claimed_record.updated_at > initial_record.updated_at
+
+    def test_claim_nonexistent_task_raises_error(self, db):
+        """Test that claiming a non-existent task raises TaskNotFoundError."""
+        nonexistent_task = Task(job_id="nonexistent", url="http://a.b/c")
+        with pytest.raises(TaskNotFoundError):
+            db.claim_task(nonexistent_task, 123)

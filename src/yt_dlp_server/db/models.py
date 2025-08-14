@@ -1,5 +1,5 @@
 import enum
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 from pydantic import BaseModel, field_validator, model_validator
@@ -29,7 +29,10 @@ class TaskRecord(BaseModel):
     @classmethod
     def parse_datetimes(cls, v: Any) -> Any:
         if isinstance(v, str):
-            return datetime.fromisoformat(v)
+            dt = datetime.fromisoformat(v)
+            if dt.tzinfo is None:
+                return dt.replace(tzinfo=timezone.utc)
+            return dt
         return v
 
     @field_validator("status", mode="before")
