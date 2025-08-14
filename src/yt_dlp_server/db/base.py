@@ -28,5 +28,7 @@ class BaseDB[ConnectionParameters](abc.ABC):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def claim_task(self, task: Task, claimed_by: int) -> None:
+    def claim_task(
+        self, task: Task, claimed_by: int, timeout_seconds: int = 1800
+    ) -> TaskRecord | None:
         raise NotImplementedError

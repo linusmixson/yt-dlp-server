@@ -6,8 +6,8 @@ from yt_dlp_server.db.errors import TaskNotFoundError
 from yt_dlp_server.db.models import Task, TaskRecord, TaskStatus
 
 
-class SQLiteDB(BaseDB[sqlite3.Connection]):
-    def __init__(self):
+class SQLiteDB(BaseDB[str]):
+    def __init__(self) -> None:
         self.connection: sqlite3.Connection | None = None
 
     def connect(self, parameters: str) -> None:
@@ -16,6 +16,8 @@ class SQLiteDB(BaseDB[sqlite3.Connection]):
         self.connection.row_factory = sqlite3.Row
 
     def create_tables(self) -> None:
+        if self.connection is None:
+            raise RuntimeError("Database is not connected")
         self.connection.execute(
             """
             CREATE TABLE IF NOT EXISTS task (
@@ -47,6 +49,8 @@ class SQLiteDB(BaseDB[sqlite3.Connection]):
 
     def add_task(self, task: Task, claimed_by: int) -> TaskRecord:
         now_utc = datetime.now(UTC).isoformat()
+        if self.connection is None:
+            raise RuntimeError("Database is not connected")
         self.connection.execute(
             "INSERT INTO task (job_id, url, status, created_at, claimed_by, claimed_at, updated_at) "
             "VALUES (?, ?, ?, ?, ?, ?, ?)",
@@ -67,6 +71,8 @@ class SQLiteDB(BaseDB[sqlite3.Connection]):
         return task_record
 
     def get_task(self, task: Task) -> TaskRecord | None:
+        if self.connection is None:
+            raise RuntimeError("Database is not connected")
         cursor = self.connection.execute(
             "SELECT job_id, url, status, created_at, claimed_by, claimed_at, updated_at "
             "FROM task WHERE job_id = ? AND url = ?",
@@ -75,18 +81,14 @@ class SQLiteDB(BaseDB[sqlite3.Connection]):
         row = cursor.fetchone()
         if row:
             return TaskRecord(
-                job_id=row[0],
-                url=row[1],
-                status=row[2],
-                created_at=row[3],
-                claimed_by=row[4],
-                claimed_at=row[5],
-                updated_at=row[6],
+                **dict(row)
             )
         return None
 
-    def update_task(self, task: Task, status: TaskStatus):
+    def update_task(self, task: Task, status: TaskStatus) -> None:
         now_utc = datetime.now(UTC).isoformat()
+        if self.connection is None:
+            raise RuntimeError("Database is not connected")
         self.connection.execute(
             "UPDATE task SET status = ?, updated_at = ? WHERE job_id = ? AND url = ?",
             (status.value, now_utc, task.job_id, task.url),
@@ -99,6 +101,8 @@ class SQLiteDB(BaseDB[sqlite3.Connection]):
         now_utc = datetime.now(UTC).isoformat()
 
         # Perform atomic update: only update if claimed_by matches or timeout has expired
+        if self.connection is None:
+            raise RuntimeError("Database is not connected")
         cursor = self.connection.execute(
             """
             UPDATE task

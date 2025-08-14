@@ -13,10 +13,10 @@ class LocalStorageEngine(BaseModel, BaseStorageEngine[pathlib.Path]):
         default_factory=lambda: pathlib.Path(tempfile.mkdtemp(prefix="yt-dlp-server-"))
     )
 
-    def __init__(self, **data):
+    def __init__(self, repository: pathlib.Path | None = None, **data: object) -> None:
         super().__init__(**data)
-        if "repository" in data:
-            self._repository = data["repository"]
+        if repository is not None:
+            self._repository = repository
 
     @property
     def repository(self) -> pathlib.Path:

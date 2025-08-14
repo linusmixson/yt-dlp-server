@@ -2,7 +2,7 @@
 
 from typing import Literal
 
-from pydantic import Field, conint
+from pydantic import Field
 from pydantic_settings import BaseSettings
 
 
@@ -484,8 +484,10 @@ class YtDlpSettings(BaseSettings):
         default=None,
         description="Specify audio format.",
     )
-    audioquality: conint(ge=0, le=10) = Field(
+    audioquality: int = Field(
         default=5,
+        ge=0,
+        le=10,
         description="Specify audio quality, from 0 (best) to 10 (worst).",
     )
     remuxvideo: str | None = Field(
