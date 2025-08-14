@@ -12,7 +12,7 @@ class BaseDB(abc.ABC, Generic[ConnectionParameters]):
     @abc.abstractmethod
     def connect(self, parameters: ConnectionParameters) -> None:
         raise NotImplementedError
-    
+
     @abc.abstractmethod
     def is_connected(self) -> bool:
         raise NotImplementedError
