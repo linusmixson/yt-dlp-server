@@ -48,7 +48,8 @@ class SQLiteDB(BaseDB[str]):
         return self.connection is not None
 
     def add_task(self, task: Task, claimed_by: int) -> TaskRecord:
-        now_utc = datetime.now(UTC).isoformat()
+        # Use second-granularity to match SQLite's datetime('now','utc') trigger/defaults
+        now_utc = datetime.now(UTC).replace(microsecond=0).isoformat()
         if self.connection is None:
             raise RuntimeError("Database is not connected")
         self.connection.execute(
@@ -86,7 +87,8 @@ class SQLiteDB(BaseDB[str]):
         return None
 
     def update_task(self, task: Task, status: TaskStatus) -> None:
-        now_utc = datetime.now(UTC).isoformat()
+        # Use second-granularity to match SQLite's datetime('now','utc') trigger/defaults
+        now_utc = datetime.now(UTC).replace(microsecond=0).isoformat()
         if self.connection is None:
             raise RuntimeError("Database is not connected")
         self.connection.execute(
@@ -98,7 +100,8 @@ class SQLiteDB(BaseDB[str]):
     def claim_task(
         self, task: Task, claimed_by: int, timeout_seconds: int = 1800
     ) -> TaskRecord | None:
-        now_utc = datetime.now(UTC).isoformat()
+        # Use second-granularity to match SQLite's datetime('now','utc') trigger/defaults
+        now_utc = datetime.now(UTC).replace(microsecond=0).isoformat()
 
         # Perform atomic update: only update if claimed_by matches or timeout has expired
         if self.connection is None:

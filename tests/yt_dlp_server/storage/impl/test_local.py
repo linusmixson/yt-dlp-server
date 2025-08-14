@@ -1,6 +1,7 @@
 import pathlib
 import shutil
 import tempfile
+from collections.abc import Iterator
 
 import pytest
 
@@ -8,7 +9,7 @@ from yt_dlp_server.storage.impl.local import LocalStorageEngine
 
 
 @pytest.fixture
-def temp_repo_path() -> pathlib.Path:
+def temp_repo_path() -> Iterator[pathlib.Path]:
     """Create a temporary directory for the repository and clean it up afterward."""
     path = pathlib.Path(tempfile.mkdtemp(prefix="yt-dlp-server-test-"))
     yield path
@@ -51,6 +52,13 @@ class TestLocalStorageEngine:
         empty_path = pathlib.Path("")
         assert engine.canonicalize_path(empty_path) == temp_repo_path
 
+    def test_canonicalize_with_absolute_path(self, temp_repo_path: pathlib.Path, tmp_path: pathlib.Path):
+        """Absolute paths should be returned unchanged (permitted policy)."""
+        engine = LocalStorageEngine(repository=temp_repo_path)
+        absolute_path = tmp_path / "abs-file.bin"
+        assert absolute_path.is_absolute()
+        assert engine.canonicalize_path(absolute_path) == absolute_path
+
     def test_write_and_read_bytes(self, temp_repo_path: pathlib.Path):
         """Test writing and reading bytes to/from a path."""
         engine = LocalStorageEngine(repository=temp_repo_path)
@@ -69,6 +77,18 @@ class TestLocalStorageEngine:
         # Read data back and verify
         read_data = engine.read_bytes_from_path(path)
         assert read_data == data
+
+    def test_write_read_delete_with_absolute_path(self, temp_repo_path: pathlib.Path, tmp_path: pathlib.Path):
+        """Write/read/delete using an absolute path should work."""
+        engine = LocalStorageEngine(repository=temp_repo_path)
+        absolute_path = tmp_path / "nested" / "abs.txt"
+        data = b"absolute"
+        bytes_written = engine.write_bytes_to_path(absolute_path, data)
+        assert bytes_written == len(data)
+        assert absolute_path.exists()
+        assert engine.read_bytes_from_path(absolute_path) == data
+        engine.delete_path(absolute_path)
+        assert not absolute_path.exists()
 
     def test_write_to_nested_path(self, temp_repo_path: pathlib.Path):
         """Test that writing to a nested path creates subdirectories."""
@@ -134,3 +154,14 @@ class TestLocalStorageEngine:
             engine.delete_path(path)
         except Exception as e:
             pytest.fail(f"Deleting a non-existent path raised an exception: {e}")
+
+    def test_write_and_read_text_helpers(self, temp_repo_path: pathlib.Path):
+        """Test BaseStorageEngine text helper methods via LocalStorageEngine."""
+        engine = LocalStorageEngine(repository=temp_repo_path)
+        path = pathlib.Path("notes/test.txt")
+        text = "hello 🌍"
+        # write_text_to_path is defined on BaseStorageEngine; LocalStorageEngine inherits it
+        bytes_written = engine.write_text_to_path(path, text, encoding="utf-8")
+        assert bytes_written == len(text.encode("utf-8"))
+        read_back = engine.read_text_from_path(path, encoding="utf-8")
+        assert read_back == text

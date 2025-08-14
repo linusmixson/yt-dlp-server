@@ -335,16 +335,24 @@ class TestSQLiteDBEdgeCases:
 class TestSQLiteDBTransactions:
     """Test transaction behavior and consistency."""
 
-    def test_add_task_commits_immediately(self, db, sample_task):
-        """Test that add_task commits the transaction immediately."""
-        db.add_task(sample_task, 123)
+    def test_add_task_commits_immediately(self, sample_task, tmp_path):
+        """Test that add_task commits the transaction immediately and is visible across connections."""
+        # Use a file-backed DB so we can open a second connection
+        db_file = tmp_path / "commits_immediately.db"
+        database = SQLiteDB()
+        database.connect(str(db_file))
+        database.create_tables()
 
-        # Create a new connection to the same database to verify commit
-        sqlite3.connect(":memory:")
-        # Since we're using :memory:, we can't actually test this with a separate connection
-        # But we can verify the task is immediately queryable
-        result = db.get_task(sample_task)
-        assert result is not None
+        database.add_task(sample_task, 123)
+
+        # Verify via a separate sqlite3 connection
+        with sqlite3.connect(str(db_file)) as conn:
+            cursor = conn.execute(
+                "SELECT job_id, url FROM task WHERE job_id = ? AND url = ?",
+                (sample_task.job_id, sample_task.url),
+            )
+            row = cursor.fetchone()
+            assert row is not None
 
     def test_update_task_commits_immediately(self, db, sample_task):
         """Test that update_task commits the transaction immediately."""
@@ -373,6 +381,7 @@ class TestSQLiteDBTransactions:
         assert result1.status == TaskStatus.COMPLETED
         assert result2 is not None
         # result2 should have its original status (not affected by update to result1)
+        assert result2.status == TaskStatus.PENDING
 
 
 class TestSQLiteDBTaskClaiming:
@@ -442,3 +451,78 @@ class TestSQLiteDBTaskClaiming:
         nonexistent_task = Task(job_id="nonexistent", url="http://a.b/c")
         with pytest.raises(TaskNotFoundError):
             db.claim_task(nonexistent_task, 123)
+
+
+class TestSQLiteDBGuards:
+    """Tests for guard conditions when DB is not connected."""
+
+    def test_methods_raise_before_connect(self, sample_task):
+        db = SQLiteDB()
+        # create_tables
+        with pytest.raises(RuntimeError):
+            db.create_tables()
+        # add_task
+        with pytest.raises(RuntimeError):
+            db.add_task(sample_task, 1)
+        # get_task
+        with pytest.raises(RuntimeError):
+            db.get_task(sample_task)
+        # update_task
+        with pytest.raises(RuntimeError):
+            db.update_task(sample_task, TaskStatus.PENDING)
+        # claim_task
+        with pytest.raises(RuntimeError):
+            db.claim_task(sample_task, 1)
+
+
+class TestSQLiteDBTimestamps:
+    """Tests for timestamp and timezone behavior."""
+
+    def test_taskrecord_timestamps_are_timezone_aware_utc(self, db, sample_task):
+        record = db.add_task(sample_task, 42)
+        assert record.created_at.tzinfo is not None
+        assert record.claimed_at.tzinfo is not None
+        assert record.updated_at.tzinfo is not None
+        # UTC enforcement
+        from datetime import UTC
+
+        assert record.created_at.tzinfo == UTC
+        assert record.claimed_at.tzinfo == UTC
+        assert record.updated_at.tzinfo == UTC
+
+    def test_updated_at_monotonic_on_update_and_claim(self, db, sample_task):
+        db.add_task(sample_task, 100)
+        initial = db.get_task(sample_task)
+        assert initial is not None
+        time.sleep(0.01)
+        db.update_task(sample_task, TaskStatus.RUNNING)
+        after_update = db.get_task(sample_task)
+        assert after_update is not None
+        # SQLite trigger stores second-resolution timestamps; compare at second granularity
+        assert after_update.updated_at.replace(microsecond=0) >= initial.updated_at.replace(microsecond=0)
+        time.sleep(0.01)
+        # Reclaim by same worker to ensure claim succeeds
+        db.claim_task(sample_task, 100)
+        after_claim = db.get_task(sample_task)
+        assert after_claim is not None
+        assert after_claim.updated_at.replace(microsecond=0) >= after_update.updated_at.replace(microsecond=0)
+
+
+class TestSQLiteDBUpdateTrigger:
+    """Explicitly validate the SQLite trigger updates updated_at on any update."""
+
+    def test_trigger_updates_updated_at_on_arbitrary_update(self, db, sample_task):
+        db.add_task(sample_task, 7)
+        before = db.get_task(sample_task)
+        assert before is not None
+        # Ensure we cross a wall-clock second boundary for SQLite's datetime('now','utc')
+        time.sleep(1.1)
+        # Perform an arbitrary update that doesn't change values materially
+        db.connection.execute(
+            "UPDATE task SET status = status WHERE job_id = ? AND url = ?",
+            (sample_task.job_id, sample_task.url),
+        )
+        db.connection.commit()
+        after = db.get_task(sample_task)
+        assert after is not None
+        assert after.updated_at > before.updated_at

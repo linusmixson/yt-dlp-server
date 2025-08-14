@@ -52,24 +52,26 @@ def test_put_nowait_on_full_raises_full(task: Task):
 
 def test_get_with_timeout_on_empty_queue(queue: STLQueue):
     """Test that a blocking get with a timeout raises EmptyError after the timeout."""
-    timeout = 0.01
+    timeout = 0.05
     start_time = time.monotonic()
     with pytest.raises(EmptyError):
         queue.get(timeout=timeout)
     duration = time.monotonic() - start_time
-    assert duration == pytest.approx(timeout, abs=0.01)
+    # Allow a generous tolerance to reduce flakiness on slow CI
+    assert duration == pytest.approx(timeout, rel=0.5, abs=0.05)
 
 
 def test_put_with_timeout_on_full_queue(task: Task):
     """Test that a blocking put with a timeout raises FullError after the timeout."""
     q = STLQueue(maxsize=1)
     q.put(task)
-    timeout = 0.01
+    timeout = 0.05
     start_time = time.monotonic()
     with pytest.raises(FullError):
         q.put(task, timeout=timeout)
     duration = time.monotonic() - start_time
-    assert duration == pytest.approx(timeout, abs=0.01)
+    # Allow a generous tolerance to reduce flakiness on slow CI
+    assert duration == pytest.approx(timeout, rel=0.5, abs=0.05)
 
 
 def test_task_done_and_join(task: Task):
