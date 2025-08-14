@@ -25,6 +25,7 @@ dev = [
     "ruff",
     "mypy",
     "httpx",
+    "pre-commit",
 ]
 
 [project.urls]
