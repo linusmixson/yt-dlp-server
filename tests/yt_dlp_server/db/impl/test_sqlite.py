@@ -68,8 +68,8 @@ class TestSQLiteDBConnection:
         cursor = db.connection.execute("PRAGMA table_info(task)")
         columns = cursor.fetchall()
         
-        # Expected columns: id (INTEGER, PRIMARY KEY), job_id (TEXT), url (TEXT), status (TEXT)
-        assert len(columns) == 4
+        # Expected columns: id, job_id, url, status, created_at, claimed_by, claimed_at, updated_at
+        assert len(columns) == 8
         
         # Check id column
         id_col = next(col for col in columns if col[1] == "id")
@@ -79,15 +79,37 @@ class TestSQLiteDBConnection:
         # Check job_id column
         job_id_col = next(col for col in columns if col[1] == "job_id")
         assert job_id_col[2] == "TEXT"  # type
-        assert job_id_col[5] == 0       # not a primary key
+        assert job_id_col[3] == 1       # not null flag
         
         # Check url column
         url_col = next(col for col in columns if col[1] == "url")
         assert url_col[2] == "TEXT"
+        assert url_col[3] == 1          # not null flag
         
         # Check status column
         status_col = next(col for col in columns if col[1] == "status")
         assert status_col[2] == "TEXT"
+        assert status_col[3] == 1       # not null flag
+        
+        # Check created_at column
+        created_at_col = next(col for col in columns if col[1] == "created_at")
+        assert created_at_col[2] == "TEXT"
+        assert created_at_col[3] == 1    # not null flag
+        
+        # Check claimed_by column
+        claimed_by_col = next(col for col in columns if col[1] == "claimed_by")
+        assert claimed_by_col[2] == "INTEGER"
+        assert claimed_by_col[3] == 1    # not null flag
+        
+        # Check claimed_at column
+        claimed_at_col = next(col for col in columns if col[1] == "claimed_at")
+        assert claimed_at_col[2] == "TEXT"
+        assert claimed_at_col[3] == 1    # not null flag
+        
+        # Check updated_at column
+        updated_at_col = next(col for col in columns if col[1] == "updated_at")
+        assert updated_at_col[2] == "TEXT"
+        assert updated_at_col[3] == 1    # not null flag
         
         # Check for unique constraint on (job_id, url)
         cursor = db.connection.execute("PRAGMA index_list(task)")
@@ -106,7 +128,7 @@ class TestSQLiteDBTaskOperations:
 
     def test_add_task_returns_task_record(self, db, sample_task):
         """Test that add_task returns a TaskRecord with the task and default status."""
-        result = db.add_task(sample_task)
+        result = db.add_task(sample_task, 123)
         
         assert isinstance(result, TaskRecord)
         assert result.task == sample_task
@@ -114,7 +136,7 @@ class TestSQLiteDBTaskOperations:
 
     def test_add_task_persists_to_database(self, db, sample_task):
         """Test that add_task actually persists the task to the database."""
-        db.add_task(sample_task)
+        db.add_task(sample_task, 123)
         
         # Directly query the database to verify persistence
         cursor = db.connection.execute("SELECT id, job_id, url, status FROM task WHERE job_id = ? AND url = ?", (sample_task.job_id, sample_task.url))
@@ -129,8 +151,8 @@ class TestSQLiteDBTaskOperations:
 
     def test_add_multiple_tasks(self, db, sample_task, another_task):
         """Test adding multiple different tasks."""
-        result1 = db.add_task(sample_task)
-        result2 = db.add_task(another_task)
+        result1 = db.add_task(sample_task, 123)
+        result2 = db.add_task(another_task, 456)
         
         assert isinstance(result1, TaskRecord)
         assert isinstance(result2, TaskRecord)
@@ -139,7 +161,7 @@ class TestSQLiteDBTaskOperations:
     def test_get_task_existing(self, db, sample_task):
         """Test getting an existing task from the database."""
         # First add a task
-        db.add_task(sample_task)
+        db.add_task(sample_task, 123)
         
         # Then retrieve it
         result = db.get_task(sample_task)
@@ -160,7 +182,7 @@ class TestSQLiteDBTaskOperations:
     def test_update_task_status(self, db, sample_task):
         """Test updating the status of an existing task."""
         # Add a task
-        db.add_task(sample_task)
+        db.add_task(sample_task, 123)
         
         # Update its status
         new_status = TaskStatus.RUNNING
@@ -173,7 +195,7 @@ class TestSQLiteDBTaskOperations:
 
     def test_update_task_status_multiple_times(self, db, sample_task):
         """Test updating task status multiple times."""
-        db.add_task(sample_task)
+        db.add_task(sample_task, 123)
         
         # Update through different statuses
         statuses = [TaskStatus.RUNNING, TaskStatus.COMPLETED, TaskStatus.FAILED]
@@ -205,7 +227,7 @@ class TestSQLiteDBTaskStatus:
             task = Task(job_id=f"test_{status.value}", url=sample_task.url)
             
             # Add and then update the task
-            db.add_task(task)
+            db.add_task(task, 123)
             db.update_task(task, status)
             
             # Verify the status is correctly stored and retrieved
@@ -215,7 +237,7 @@ class TestSQLiteDBTaskStatus:
 
     def test_default_status_on_add(self, db, sample_task):
         """Test that newly added tasks have a default status."""
-        result = db.add_task(sample_task)
+        result = db.add_task(sample_task, 123)
         assert isinstance(result.status, TaskStatus)
         
         # Verify it's also persisted with a valid status
@@ -230,11 +252,11 @@ class TestSQLiteDBEdgeCases:
     def test_add_duplicate_job_id_different_url(self, db, sample_task):
         """Test adding a task with the same job_id but different URL (should succeed)."""
         # Add the first task
-        db.add_task(sample_task)
+        db.add_task(sample_task, 123)
         
         # Add a task with the same job_id but different URL - this should succeed
         different_url_task = Task(job_id=sample_task.job_id, url="https://different.com/video.mp4")
-        result = db.add_task(different_url_task)
+        result = db.add_task(different_url_task, 456)
         
         # Should succeed and return a TaskRecord
         assert isinstance(result, TaskRecord)
@@ -244,14 +266,14 @@ class TestSQLiteDBEdgeCases:
     def test_add_duplicate_job_id_and_url(self, db, sample_task):
         """Test adding a task with duplicate (job_id, url) combination."""
         # Add the first task
-        db.add_task(sample_task)
+        db.add_task(sample_task, 123)
         
         # Try to add a task with the same job_id AND same URL
         duplicate_task = Task(job_id=sample_task.job_id, url=sample_task.url)
         
         # This should raise an integrity error due to UNIQUE(job_id, url) constraint
         with pytest.raises(sqlite3.IntegrityError):
-            db.add_task(duplicate_task)
+            db.add_task(duplicate_task, 123)
 
     def test_empty_database_operations(self, db):
         """Test operations on an empty database."""
@@ -271,7 +293,7 @@ class TestSQLiteDBEdgeCases:
         )
         
         # Should handle special characters without SQL injection issues
-        result = db.add_task(special_task)
+        result = db.add_task(special_task, 123)
         assert isinstance(result, TaskRecord)
         
         retrieved = db.get_task(special_task)
@@ -286,7 +308,7 @@ class TestSQLiteDBEdgeCases:
         
         large_task = Task(job_id=large_job_id, url=large_url)
         
-        result = db.add_task(large_task)
+        result = db.add_task(large_task, 123)
         assert isinstance(result, TaskRecord)
         
         retrieved = db.get_task(large_task)
@@ -300,7 +322,7 @@ class TestSQLiteDBTransactions:
 
     def test_add_task_commits_immediately(self, db, sample_task):
         """Test that add_task commits the transaction immediately."""
-        db.add_task(sample_task)
+        db.add_task(sample_task, 123)
         
         # Create a new connection to the same database to verify commit
         new_connection = sqlite3.connect(":memory:")
@@ -311,7 +333,7 @@ class TestSQLiteDBTransactions:
 
     def test_update_task_commits_immediately(self, db, sample_task):
         """Test that update_task commits the transaction immediately."""
-        db.add_task(sample_task)
+        db.add_task(sample_task, 123)
         db.update_task(sample_task, TaskStatus.RUNNING)
         
         # Verify the update is immediately visible
@@ -322,8 +344,8 @@ class TestSQLiteDBTransactions:
     def test_multiple_operations_consistency(self, db, sample_task, another_task):
         """Test that multiple operations maintain data consistency."""
         # Add multiple tasks
-        db.add_task(sample_task)
-        db.add_task(another_task)
+        db.add_task(sample_task, 123)
+        db.add_task(another_task, 456)
         
         # Update one task
         db.update_task(sample_task, TaskStatus.COMPLETED)

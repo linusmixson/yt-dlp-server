@@ -18,7 +18,7 @@ class BaseDB(abc.ABC, Generic[ConnectionParameters]):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def add_task(self, task: Task) -> TaskRecord:
+    def add_task(self, task: Task, claimed_by: int) -> TaskRecord:
         raise NotImplementedError
 
     @abc.abstractmethod

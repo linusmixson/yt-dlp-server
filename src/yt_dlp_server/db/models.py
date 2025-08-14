@@ -1,6 +1,8 @@
 import enum
+from datetime import datetime
+from typing import Any
 
-import pydantic
+from pydantic import BaseModel, field_validator, model_validator
 
 
 class TaskStatus(enum.Enum):
@@ -10,11 +12,37 @@ class TaskStatus(enum.Enum):
     FAILED = "failed"
 
 
-class Task(pydantic.BaseModel):
+class Task(BaseModel):
     job_id: str
     url: str
 
 
-class TaskRecord(pydantic.BaseModel):
+class TaskRecord(BaseModel):
     task: Task
     status: TaskStatus
+    created_at: datetime
+    claimed_by: int
+    claimed_at: datetime
+    updated_at: datetime
+
+    @field_validator("created_at", "updated_at", "claimed_at", mode="before")
+    @classmethod
+    def parse_datetimes(cls, v: Any) -> Any:
+        if isinstance(v, str):
+            return datetime.fromisoformat(v)
+        return v
+
+    @field_validator("status", mode="before")
+    @classmethod
+    def parse_status(cls, v: Any) -> Any:
+        if isinstance(v, str):
+            return TaskStatus(v)
+        return v
+
+    @model_validator(mode="before")
+    @classmethod
+    def build_task(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            if "job_id" in data and "url" in data:
+                data["task"] = Task(job_id=data.pop("job_id"), url=data.pop("url"))
+        return data
